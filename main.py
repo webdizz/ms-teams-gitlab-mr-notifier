@@ -14,7 +14,8 @@ def gitlab_merge_request_notify(request):
     import logging
     logger = logging.getLogger('gitlab_merge_request_notify')
 
-    TEAMS_URL = os.environ.get('TEAMS_URL', 'MS Teams URL')
+    DEV_CHANNEL_URL = os.environ.get('DEV_CHANNEL_URL', 'MS Teams Developers channel URL')
+    QA_CHANNEL_URL = os.environ.get('QA_CHANNEL_URL', 'MS Teams QAs channel URL')
     BRANCH_NAME = os.environ.get('BRANCH_NAME', 'hupg/')
 
     if request.method == 'POST' and request.headers['content-type'] == 'application/json':
@@ -59,10 +60,6 @@ def gitlab_merge_request_notify(request):
                         {
                         "name": "Status:",
                         "value": mr['object_attributes']['state']
-                        },
-                        {
-                        "name": "Work in Progress:",
-                        "value": mr['object_attributes']['work_in_progress']
                         }
                     ],
                     }
@@ -70,7 +67,11 @@ def gitlab_merge_request_notify(request):
             }
             response = json.dumps(msg)
             logger.info(response)
-            requests.post(TEAMS_URL, data = response)
+            requests.post(DEV_CHANNEL_URL, data = response)
+            # notify QAs that feature was merged
+            if mr['object_attributes']['state'] == 'merged':
+                requests.post(QA_CHANNEL_URL, data = response)
+            
         return "Merge request {} handled".format(mr['object_attributes']['id'])
     else:
         return abort(405)
